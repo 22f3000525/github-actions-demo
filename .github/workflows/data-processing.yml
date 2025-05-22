@@ -1,0 +1,45 @@
+name: Automated Data Processing Workflow
+
+on:
+  workflow_dispatch:  # Allows manual triggering
+  schedule:
+    - cron: '0 12 * * *'  # Runs at noon UTC daily
+
+jobs:
+  data-processing:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 22f3000525@ds.study.iitm.ac.in - Setup environment
+        run: |
+          echo "Setting up environment for data processing"
+          python -m pip install --upgrade pip
+          pip install requests pandas
+
+      - name: Process data
+        run: |
+          python << 'EOF'
+          import requests
+          import pandas as pd
+          from datetime import datetime
+
+          # Fetch sample data
+          response = requests.get('https://api.sampleapis.com/coffee/hot')
+          data = response.json()
+
+          # Process and save data
+          df = pd.DataFrame(data)
+          timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+          df.to_csv(f"coffee_data_{timestamp}.csv", index=False)
+          EOF
+
+      - name: Commit processed data
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add *.csv
+          git commit -m "Add processed coffee data [skip ci]" || exit 0
+          git push
